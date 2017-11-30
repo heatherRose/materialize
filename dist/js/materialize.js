@@ -1,5 +1,5 @@
 /*!
- * Materialize v1.0.0-alpha.1 (http://materializecss.com)
+ * Materialize vundefined (http://materializecss.com)
  * Copyright 2014-2017 Materialize
  * MIT License (https://raw.githubusercontent.com/Dogfalo/materialize/master/LICENSE)
  */
@@ -567,9 +567,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
     on: function (eventName, delegate, callback, runOnce) {
       // jshint ignore:line
-
       var originalCallback;
-
       if (!isString(eventName)) {
         for (var key in eventName) {
           this.on(key, delegate, eventName[key]);
@@ -591,11 +589,11 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
         originalCallback = callback;
         callback = function (e) {
           var t = e.target;
-
           while (!matches(t, delegate)) {
-            if (t === this) {
+            if (t === this || t === null) {
               return t = false;
             }
+
             t = t.parentNode;
           }
 
@@ -1815,6 +1813,24 @@ M.keys = {
 };
 
 /**
+ * TabPress Keydown handler
+ */
+// M.tabPressed = false;
+// let docHandleKeydown = function(e) {
+//   if (e.which === M.keys.TAB) {
+//     M.tabPressed = true;
+//   }
+// };
+// let docHandleKeyup = function(e) {
+//   if (e.which === M.keys.TAB) {
+//     M.tabPressed = false;
+//   }
+// };
+// document.addEventListener('keydown', docHandleKeydown);
+// document.addEventListener('keyup', docHandleKeyup);
+
+
+/**
  * Initialize jQuery wrapper for plugin
  * @param {Class} plugin  javascript class
  * @param {string} pluginName  jQuery plugin name
@@ -2459,7 +2475,7 @@ if (Vel) {
        */
       this.isOpen = false;
 
-      this.focusedIndex = null;
+      this.focusedIndex = -1;
       this.filterQuery = [];
 
       // Move dropdown-content after dropdown-trigger
@@ -2598,7 +2614,7 @@ if (Vel) {
         // ARROW DOWN OR ENTER WHEN SELECT IS CLOSED - open Dropdown
         if ((e.which === M.keys.ARROW_DOWN || e.which === M.keys.ENTER) && !this.isOpen) {
           e.preventDefault();
-          this.open();
+          this.open(true);
         }
       }
 
@@ -2691,7 +2707,9 @@ if (Vel) {
     }, {
       key: "_focusFocusedItem",
       value: function _focusFocusedItem() {
-        this.dropdownEl.children[this.focusedIndex].focus();
+        if (this.focusedIndex >= 0 && this.focusedIndex < this.dropdownEl.children.length) {
+          this.dropdownEl.children[this.focusedIndex].focus();
+        }
       }
     }, {
       key: "_getDropdownPosition",
@@ -2831,18 +2849,19 @@ if (Vel) {
 
       /**
        * Open Dropdown
+       * @param {Boolean} fromKeydown
        */
 
     }, {
       key: "open",
-      value: function open() {
+      value: function open(fromKeydown) {
         if (this.isOpen) {
           return;
         }
         this.isOpen = true;
 
         // Highlight focused item
-        if (this.focusedIndex === null) {
+        if (!!fromKeydown) {
           this.focusedIndex = 0;
         }
 
@@ -2876,6 +2895,7 @@ if (Vel) {
           return;
         }
         this.isOpen = false;
+        this.focusedIndex = -1;
 
         // onCloseStart callback
         if (typeof this.options.onCloseStart === 'function') {
@@ -4031,14 +4051,14 @@ if (Vel) {
             });
           }
         } else {
-          if (this.$content !== undefined) {
+          if (this.$content.length) {
             this.$content[0].style.display = 'block';
             this.$content.addClass('active');
             if (typeof this.options.onShow === 'function') {
               this.options.onShow.call(this, this.$content[0]);
             }
 
-            if ($oldContent !== undefined && !$oldContent.is(this.$content)) {
+            if ($oldContent.length && !$oldContent.is(this.$content)) {
               $oldContent[0].style.display = 'none';
               $oldContent.removeClass('active');
             }
@@ -4209,7 +4229,7 @@ if (Vel) {
 
       /**
        * Finds right attribute for indicator based on active tab.
-       * @param {jQuery} el
+       * @param {cash} el
        */
 
     }, {
@@ -4220,13 +4240,18 @@ if (Vel) {
 
       /**
        * Finds left attribute for indicator based on active tab.
-       * @param {jQuery} el
+       * @param {cash} el
        */
 
     }, {
       key: "_calcLeftPos",
       value: function _calcLeftPos(el) {
         return Math.floor(el.position().left);
+      }
+    }, {
+      key: "updateTabIndicator",
+      value: function updateTabIndicator() {
+        this._animateIndicator(this.index);
       }
 
       /**
@@ -4475,8 +4500,8 @@ if (Vel) {
 
         this.xMovement = 0, this.yMovement = 0;
 
-        targetTop = origin.offsetTop;
-        targetLeft = origin.offsetLeft;
+        targetTop = origin.getBoundingClientRect().top + M.getDocumentScrollTop();
+        targetLeft = origin.getBoundingClientRect().left + M.getDocumentScrollLeft();
 
         if (this.options.position === 'top') {
           targetTop += -tooltipHeight - margin;
@@ -7308,8 +7333,7 @@ if (Vel) {
       this.$el.addClass('chips input-field');
       this.chipsData = [];
       this.$chips = $();
-      this.$input = this.$el.find('input');
-      this.$input.addClass('input');
+      this._setupInput();
       this.hasAutocomplete = Object.keys(this.options.autocompleteOptions).length > 0;
 
       // Set input id
@@ -7521,7 +7545,7 @@ if (Vel) {
         }
 
         // move input to end
-        this.$el.append(this.$input);
+        this.$el.append(this.$input[0]);
       }
 
       /**
@@ -7540,6 +7564,22 @@ if (Vel) {
         };
 
         this.autocomplete = M.Autocomplete.init(this.$input, this.options.autocompleteOptions)[0];
+      }
+
+      /**
+       * Setup Input
+       */
+
+    }, {
+      key: "_setupInput",
+      value: function _setupInput() {
+        this.$input = this.$el.find('input');
+        if (!this.$input.length) {
+          this.$input = $('<input></input>');
+          this.$el.append(this.$input);
+        }
+
+        this.$input.addClass('input');
       }
 
       /**
@@ -7623,7 +7663,7 @@ if (Vel) {
     }, {
       key: "deleteChip",
       value: function deleteChip(chipIndex) {
-        // let chip = this.chips[chipIndex];
+        var $chip = this.$chips.eq(chipIndex);
         this.$chips.eq(chipIndex).remove();
         this.$chips = this.$chips.filter(function (el) {
           return $(el).index() >= 0;
@@ -7633,7 +7673,7 @@ if (Vel) {
 
         // fire chipDelete callback
         if (typeof this.options.onChipDelete === 'function') {
-          this.options.onChipDelete.call(this, this.$el, this.$chip);
+          this.options.onChipDelete.call(this, this.$el, $chip[0]);
         }
       }
 
@@ -7651,20 +7691,8 @@ if (Vel) {
 
         // fire chipSelect callback
         if (typeof this.options.onChipSelect === 'function') {
-          this.options.onChipSelect.call(this, this.$el, this.$chip);
+          this.options.onChipSelect.call(this, this.$el, $chip[0]);
         }
-      }
-
-      /**
-       * Deselect chip
-       * @param {Number} chip
-       */
-
-    }, {
-      key: "deselectChip",
-      value: function deselectChip(chipIndex) {
-        var $chip = this.$chips.eq(chipIndex);
-        this._selectedChip = null;
       }
     }], [{
       key: "init",
@@ -8346,11 +8374,7 @@ if (Vel) {
   var _defaults = {
 
     // the default output format for the input field value
-    format: 'YYYY-MM-DD',
-
-    // the toString function which gets passed a current date object and format
-    // and returns a string
-    toString: null,
+    format: 'mmm dd, yyyy',
 
     // Used to create date object from current input string
     parse: null,
@@ -8446,6 +8470,10 @@ if (Vel) {
 
       this.options = $.extend({}, Datepicker.defaults, options);
 
+      // Remove time component from minDate and maxDate options
+      if (this.options.minDate) this.options.minDate.setHours(0, 0, 0, 0);
+      if (this.options.maxDate) this.options.maxDate.setHours(0, 0, 0, 0);
+
       this.id = M.guid();
 
       this._setupVariables();
@@ -8515,14 +8543,22 @@ if (Vel) {
     }, {
       key: "toString",
       value: function toString(format) {
+        var _this35 = this;
+
         format = format || this.options.format;
         if (!Datepicker._isDate(this.date)) {
           return '';
         }
-        if (this.options.toString) {
-          return this.options.toString(this.date, format);
-        }
-        return this.date.toDateString();
+
+        var formatArray = format.split(/(d{1,4}|m{1,4}|y{4}|yy|!.)/g);
+        var formattedDate = formatArray.map(function (label) {
+          if (_this35.formats[label]) {
+            return _this35.formats[label]();
+          } else {
+            return label;
+          }
+        }).join('');
+        return formattedDate;
       }
     }, {
       key: "setDate",
@@ -8556,7 +8592,7 @@ if (Vel) {
         this.gotoDate(this.date);
 
         if (!preventOnSelect && typeof this.options.onSelect === 'function') {
-          this.options.onSelect.call(this, this.getDate());
+          this.options.onSelect.call(this, this.date);
         }
       }
     }, {
@@ -8811,7 +8847,6 @@ if (Vel) {
           arr.push('<option value="' + (year === refYear ? i - c : 12 + i - c) + '"' + (i === month ? ' selected="selected"' : '') + (isMinYear && i < opts.minMonth || isMaxYear && i > opts.maxMonth ? 'disabled="disabled"' : '') + '>' + opts.i18n.months[i] + '</option>');
         }
 
-        // monthHtml = '<div class="pika-label">' + opts.i18n.months[month] + '<select class="pika-select pika-select-month" tabindex="-1">' + arr.join('') + '</select></div>';
         monthHtml = '<select class="pika-select pika-select-month" tabindex="-1">' + arr.join('') + '</select>';
 
         if ($.isArray(opts.yearRange)) {
@@ -8827,7 +8862,7 @@ if (Vel) {
             arr.push('<option value="' + i + '"' + (i === year ? ' selected="selected"' : '') + '>' + i + '</option>');
           }
         }
-        // yearHtml = '<div class="pika-label">' + year + opts.yearSuffix + '<select class="pika-select pika-select-year" tabindex="-1">' + arr.join('') + '</select></div>';
+
         yearHtml = '<select class="pika-select pika-select-year" tabindex="-1">' + arr.join('') + '</select>';
 
         var leftArrow = '<svg fill="#000000" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M15.41 16.09l-4.58-4.59 4.58-4.59L14 5.5l-6 6 6 6z"/><path d="M0-.5h24v24H0z" fill="none"/></svg>';
@@ -8898,8 +8933,14 @@ if (Vel) {
         this.calendarEl.innerHTML = html;
 
         // Init Materialize Select
-        new M.Select(this.calendarEl.querySelector('.pika-select-year'), { classes: 'select-year' });
-        new M.Select(this.calendarEl.querySelector('.pika-select-month'), { classes: 'select-month' });
+        var yearSelect = this.calendarEl.querySelector('.pika-select-year');
+        var monthSelect = this.calendarEl.querySelector('.pika-select-month');
+        new M.Select(yearSelect, { classes: 'select-year' });
+        new M.Select(monthSelect, { classes: 'select-month' });
+
+        // Add change handlers for select
+        yearSelect.addEventListener('change', this._handleYearChange.bind(this));
+        monthSelect.addEventListener('change', this._handleMonthChange.bind(this));
 
         if (typeof this.options.onDraw === 'function') {
           this.options.onDraw(this);
@@ -8920,6 +8961,7 @@ if (Vel) {
         this._finishSelectionBound = this._finishSelection.bind(this);
         this._handleTodayClickBound = this._handleTodayClick.bind(this);
         this._handleClearClickBound = this._handleClearClick.bind(this);
+        this._handleMonthChange = this._handleMonthChange.bind(this);
 
         this.el.addEventListener('click', this._handleInputClickBound);
         this.el.addEventListener('keydown', this._handleInputKeydownBound);
@@ -8932,6 +8974,8 @@ if (Vel) {
     }, {
       key: "_setupVariables",
       value: function _setupVariables() {
+        var _this36 = this;
+
         this.$modalEl = $(Datepicker._template);
         this.modalEl = this.$modalEl[0];
 
@@ -8942,6 +8986,34 @@ if (Vel) {
         this.clearBtn = this.modalEl.querySelector('.datepicker-clear');
         this.todayBtn = this.modalEl.querySelector('.datepicker-today');
         this.doneBtn = this.modalEl.querySelector('.datepicker-done');
+
+        this.formats = {
+
+          dd: function () {
+            return _this36.date.getDate();
+          },
+          ddd: function () {
+            return _this36.options.i18n.weekdaysShort[_this36.date.getDay()];
+          },
+          dddd: function () {
+            return _this36.options.i18n.weekdays[_this36.date.getDay()];
+          },
+          mm: function () {
+            return _this36.date.getMonth() + 1;
+          },
+          mmm: function () {
+            return _this36.options.i18n.monthsShort[_this36.date.getMonth()];
+          },
+          mmmm: function () {
+            return _this36.options.i18n.monthsShort[_this36.date.getMonth()];
+          },
+          yy: function () {
+            return _this36.date.getFullYear().slice(2);
+          },
+          yyyy: function () {
+            return _this36.date.getFullYear();
+          }
+        };
       }
 
       /**
@@ -9012,50 +9084,42 @@ if (Vel) {
         this.setInputValue();
         this.close();
       }
+    }, {
+      key: "_handleMonthChange",
+      value: function _handleMonthChange(e) {
+        this.gotoMonth(e.target.value);
+      }
+    }, {
+      key: "_handleYearChange",
+      value: function _handleYearChange(e) {
+        this.gotoYear(e.target.value);
+      }
 
-      // _onChange(e) {
-      //   e = e || window.event;
-      //   let target = e.target || e.srcElement;
-      //   if (!target) {
-      //     return;
-      //   }
-      //   if (hasClass(target, 'pika-select-month')) {
-      //     self.gotoMonth(target.value);
-      //   }
-      //   else if (hasClass(target, 'pika-select-year')) {
-      //     self.gotoYear(target.value);
-      //   }
-      // }
+      /**
+       * change view to a specific month (zero-index, e.g. 0: January)
+       */
 
-      // _onKeyChange(e) {
-      //   e = e || window.event;
+    }, {
+      key: "gotoMonth",
+      value: function gotoMonth(month) {
+        if (!isNaN(month)) {
+          this.calendars[0].month = parseInt(month, 10);
+          this.adjustCalendars();
+        }
+      }
 
-      //   if (self.isVisible()) {
+      /**
+       * change view to a specific full year (e.g. "2012")
+       */
 
-      //     switch(e.keyCode){
-      //     case 13:
-      //     case 27:
-      //       if (opts.field) {
-      //         opts.field.blur();
-      //       }
-      //       break;
-      //     case 37:
-      //       e.preventDefault();
-      //       self.adjustDate('subtract', 1);
-      //       break;
-      //     case 38:
-      //       self.adjustDate('subtract', 7);
-      //       break;
-      //     case 39:
-      //       self.adjustDate('add', 1);
-      //       break;
-      //     case 40:
-      //       self.adjustDate('add', 7);
-      //       break;
-      //     }
-      //   }
-      // }
-
+    }, {
+      key: "gotoYear",
+      value: function gotoYear(year) {
+        if (!isNaN(year)) {
+          this.calendars[0].year = parseInt(year, 10);
+          this.adjustCalendars();
+        }
+      }
     }, {
       key: "_handleInputChange",
       value: function _handleInputChange(e) {
@@ -9078,26 +9142,6 @@ if (Vel) {
         //   self.show();
         // }
       }
-
-      // _onInputBlur() {
-      //   // IE allows pika div to gain focus; catch blur the input field
-      //   let pEl = document.activeElement;
-      //   do {
-      //     if (hasClass(pEl, 'pika-single')) {
-      //       return;
-      //     }
-      //   }
-      //   while ((pEl = pEl.parentNode));
-
-      //   if (!self._c) {
-      //     self._b = sto(function() {
-      //       self.hide();
-      //     }, 50);
-      //   }
-      //   self._c = false;
-      // }
-
-
     }, {
       key: "renderDayName",
       value: function renderDayName(opts, day, abbr) {
@@ -9417,11 +9461,11 @@ if (Vel) {
     }, {
       key: "_setupModal",
       value: function _setupModal() {
-        var _this35 = this;
+        var _this37 = this;
 
         this.modal = new M.Modal(this.modalEl, {
           complete: function () {
-            _this35.isOpen = false;
+            _this37.isOpen = false;
           }
         });
       }
@@ -9645,7 +9689,7 @@ if (Vel) {
     }, {
       key: "setHand",
       value: function setHand(x, y, roundBy5) {
-        var _this36 = this;
+        var _this38 = this;
 
         var radian = Math.atan2(x, -y),
             isHours = this.currentView === 'hours',
@@ -9700,7 +9744,7 @@ if (Vel) {
             if (!this.vibrateTimer) {
               navigator[this.vibrate](10);
               this.vibrateTimer = setTimeout(function () {
-                _this36.vibrateTimer = null;
+                _this38.vibrateTimer = null;
               }, 100);
             }
           }
@@ -10049,7 +10093,7 @@ if (Vel) {
      * @param {Object} options
      */
     function Carousel(el, options) {
-      var _this37 = this;
+      var _this39 = this;
 
       _classCallCheck(this, Carousel);
 
@@ -10104,8 +10148,8 @@ if (Vel) {
       // Iterate through slides
       this.$indicators = $('<ul class="indicators"></ul>');
       this.$el.find('.carousel-item').each(function (el, i) {
-        _this37.images.push(el);
-        if (_this37.showIndicators) {
+        _this39.images.push(el);
+        if (_this39.showIndicators) {
           var $indicator = $('<li class="indicator-item"></li>');
 
           // Add active to first by default.
@@ -10113,7 +10157,7 @@ if (Vel) {
             $indicator[0].classList.add('active');
           }
 
-          _this37.$indicators.append($indicator);
+          _this39.$indicators.append($indicator);
         }
       });
       if (this.showIndicators) {
@@ -10126,7 +10170,7 @@ if (Vel) {
       ['webkit', 'Moz', 'O', 'ms'].every(function (prefix) {
         var e = prefix + 'Transform';
         if (typeof document.body.style[e] !== 'undefined') {
-          _this37.xform = e;
+          _this39.xform = e;
           return false;
         }
         return true;
@@ -10155,7 +10199,7 @@ if (Vel) {
     }, {
       key: "_setupEventHandlers",
       value: function _setupEventHandlers() {
-        var _this38 = this;
+        var _this40 = this;
 
         this._handleCarouselTapBound = this._handleCarouselTap.bind(this);
         this._handleCarouselDragBound = this._handleCarouselDrag.bind(this);
@@ -10177,7 +10221,7 @@ if (Vel) {
         if (this.showIndicators && this.$indicators) {
           this._handleIndicatorClickBound = this._handleIndicatorClick.bind(this);
           this.$indicators.find('.indicator-item').each(function (el, i) {
-            el.addEventListener('click', _this38._handleIndicatorClickBound);
+            el.addEventListener('click', _this40._handleIndicatorClickBound);
           });
         }
 
@@ -10195,7 +10239,7 @@ if (Vel) {
     }, {
       key: "_removeEventHandlers",
       value: function _removeEventHandlers() {
-        var _this39 = this;
+        var _this41 = this;
 
         if (typeof window.ontouchstart !== 'undefined') {
           this.el.removeEventListener('touchstart', this._handleCarouselTapBound);
@@ -10210,7 +10254,7 @@ if (Vel) {
 
         if (this.showIndicators && this.$indicators) {
           this.$indicators.find('.indicator-item').each(function (el, i) {
-            el.removeEventListener('click', _this39._handleIndicatorClickBound);
+            el.removeEventListener('click', _this41._handleIndicatorClickBound);
           });
         }
 
@@ -10396,7 +10440,7 @@ if (Vel) {
     }, {
       key: "_setCarouselHeight",
       value: function _setCarouselHeight(imageOnly) {
-        var _this40 = this;
+        var _this42 = this;
 
         var firstSlide = this.$el.find('.carousel-item.active').length ? this.$el.find('.carousel-item.active').first() : this.$el.find('.carousel-item').first();
         var firstImage = firstSlide.find('img').first();
@@ -10416,7 +10460,7 @@ if (Vel) {
           } else {
             // Get height when image is loaded normally
             firstImage.one('load', function (el, i) {
-              _this40.$el.css('height', el.offsetHeight + 'px');
+              _this42.$el.css('height', el.offsetHeight + 'px');
             });
           }
         } else if (!imageOnly) {
@@ -10522,7 +10566,7 @@ if (Vel) {
     }, {
       key: "_scroll",
       value: function _scroll(x) {
-        var _this41 = this;
+        var _this43 = this;
 
         // Track scrolling state
         if (!this.$el.hasClass('scrolling')) {
@@ -10532,7 +10576,7 @@ if (Vel) {
           window.clearTimeout(this.scrollingTimeout);
         }
         this.scrollingTimeout = window.setTimeout(function () {
-          _this41.$el.removeClass('scrolling');
+          _this43.$el.removeClass('scrolling');
         }, this.options.duration);
 
         // Start actual scroll
@@ -11192,8 +11236,8 @@ if (Vel) {
       this.isMultiple = this.$el.prop('multiple');
 
       // Setup
-      this.valuesSelected = [];
-      this.$selectedOptions = $();
+      this._keysSelected = {};
+      this._valueDict = {}; // Maps key to original and generated option element.
       this._setupDropdown();
 
       this._setupEventHandlers();
@@ -11219,14 +11263,14 @@ if (Vel) {
     }, {
       key: "_setupEventHandlers",
       value: function _setupEventHandlers() {
-        var _this42 = this;
+        var _this44 = this;
 
         this._handleSelectChangeBound = this._handleSelectChange.bind(this);
         this._handleOptionClickBound = this._handleOptionClick.bind(this);
         this._handleInputClickBound = this._handleInputClick.bind(this);
 
         $(this.dropdownOptions).find('li:not(.optgroup)').each(function (el) {
-          el.addEventListener('click', _this42._handleOptionClickBound);
+          el.addEventListener('click', _this44._handleOptionClickBound);
         });
         this.el.addEventListener('change', this._handleSelectChangeBound);
         this.input.addEventListener('click', this._handleInputClickBound);
@@ -11239,10 +11283,10 @@ if (Vel) {
     }, {
       key: "_removeEventHandlers",
       value: function _removeEventHandlers() {
-        var _this43 = this;
+        var _this45 = this;
 
         $(this.dropdownOptions).find('li:not(.optgroup)').each(function (el) {
-          el.removeEventListener('click', _this43._handleOptionClickBound);
+          el.removeEventListener('click', _this45._handleOptionClickBound);
         });
         this.el.removeEventListener('change', this._handleSelectChangeBound);
         this.input.removeEventListener('click', this._handleInputClickBound);
@@ -11270,14 +11314,14 @@ if (Vel) {
       value: function _handleOptionClick(e) {
         e.preventDefault();
         var option = $(e.target).closest('li')[0];
-        var optionIndex = $(this.dropdownOptions).find('li:not(.optgroup)').index(option);
-        if (!$(option).hasClass('disabled') && !$(option).hasClass('optgroup')) {
+        var key = option.id;
+        if (!$(option).hasClass('disabled') && !$(option).hasClass('optgroup') && key.length) {
           var selected = true;
 
           if (this.isMultiple) {
             var checkbox = $(option).find('input[type="checkbox"]');
             checkbox.prop('checked', !checkbox.prop('checked'));
-            selected = this._toggleEntryFromArray(optionIndex);
+            selected = this._toggleEntryFromArray(key);
           } else {
             $(this.dropdownOptions).find('li').removeClass('active');
             $(option).toggleClass('active');
@@ -11285,7 +11329,7 @@ if (Vel) {
           }
 
           this._activateOption($(this.dropdownOptions), option);
-          this.$el.find('option').eq(optionIndex).prop('selected', selected);
+          $(this._valueDict[key].el).prop('selected', selected);
           this.$el.trigger('change');
         }
 
@@ -11312,7 +11356,7 @@ if (Vel) {
     }, {
       key: "_setupDropdown",
       value: function _setupDropdown() {
-        var _this44 = this;
+        var _this46 = this;
 
         this.wrapper = document.createElement('div');
         this.wrapper.classList.add();
@@ -11336,25 +11380,21 @@ if (Vel) {
             if ($(el).is('option')) {
               // Direct descendant option.
               var optionEl = void 0;
-              if (_this44.isMultiple) {
-                optionEl = _this44._appendOptionWithIcon(_this44.$el, el, 'multiple');
+              if (_this46.isMultiple) {
+                optionEl = _this46._appendOptionWithIcon(_this46.$el, el, 'multiple');
               } else {
-                optionEl = _this44._appendOptionWithIcon(_this44.$el, el);
+                optionEl = _this46._appendOptionWithIcon(_this46.$el, el);
               }
 
-              if ($(el).prop('selected')) {
-                _this44.$selectedOptions.add(optionEl);
-              }
+              _this46._addOptionToValueDict(el, optionEl);
             } else if ($(el).is('optgroup')) {
               // Optgroup.
               var selectOptions = $(el).children('option');
-              $(_this44.dropdownOptions).append($('<li class="optgroup"><span>' + el.getAttribute('label') + '</span></li>')[0]);
+              $(_this46.dropdownOptions).append($('<li class="optgroup"><span>' + el.getAttribute('label') + '</span></li>')[0]);
 
               selectOptions.each(function (el) {
-                var optionEl = _this44._appendOptionWithIcon(_this44.$el, el, 'optgroup-option');
-                if ($(el).prop('selected')) {
-                  _this44.$selectedOptions.add(optionEl);
-                }
+                var optionEl = _this46._appendOptionWithIcon(_this46.$el, el, 'optgroup-option');
+                _this46._addOptionToValueDict(el, optionEl);
               });
             }
           });
@@ -11376,7 +11416,7 @@ if (Vel) {
         this._setValueToInput();
 
         // Add caret
-        var dropdownIcon = $('<svg class="caret" fill="#000000" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+        var dropdownIcon = $('<svg class="caret" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
         this.$el.before(dropdownIcon[0]);
 
         // Initialize dropdown
@@ -11390,6 +11430,25 @@ if (Vel) {
 
         // Add initial selections
         this._setSelectedStates();
+      }
+
+      /**
+       * Add option to value dict
+       * @param {Element} el  original option element
+       * @param {Element} optionEl  generated option element
+       */
+
+    }, {
+      key: "_addOptionToValueDict",
+      value: function _addOptionToValueDict(el, optionEl) {
+        var index = Object.keys(this._valueDict).length;
+        var key = this.dropdownOptions.id + index;
+        var obj = {};
+        optionEl.id = key;
+
+        obj.el = el;
+        obj.optionEl = optionEl;
+        this._valueDict[key] = obj;
       }
 
       /**
@@ -11442,26 +11501,24 @@ if (Vel) {
 
       /**
        * Toggle entry from option
-       * @param {Number} entryIndex
+       * @param {String} key  Option key
        * @return {Boolean}  if entry was added or removed
        */
 
     }, {
       key: "_toggleEntryFromArray",
-      value: function _toggleEntryFromArray(entryIndex) {
-        var index = this.valuesSelected.indexOf(entryIndex),
-            notAdded = index === -1;
-
+      value: function _toggleEntryFromArray(key) {
+        var notAdded = !this._keysSelected.hasOwnProperty(key);
         if (notAdded) {
-          this.valuesSelected.push(entryIndex);
+          this._keysSelected[key] = true;
         } else {
-          this.valuesSelected.splice(index, 1);
+          delete this._keysSelected[key];
         }
 
-        $(this.dropdownOptions).find('li:not(.optgroup)').eq(entryIndex).toggleClass('active');
+        $(this._valueDict[key].optionEl).toggleClass('active');
 
         // use notAdded instead of true (to detect if the option is selected or not)
-        this.$el.find('option').eq(entryIndex).prop('selected', notAdded);
+        $(this._valueDict[key].el).prop('selected', notAdded);
 
         return notAdded;
       }
@@ -11476,7 +11533,7 @@ if (Vel) {
         var value = '';
         var options = this.$el.find('option');
 
-        options.each(function (el, i) {
+        options.each(function (el) {
           if ($(el).prop('selected')) {
             var text = $(el).text();
             value === '' ? value += text : value += ', ' + text;
@@ -11500,22 +11557,19 @@ if (Vel) {
     }, {
       key: "_setSelectedStates",
       value: function _setSelectedStates() {
-        var _this45 = this;
+        this._keysSelected = {};
 
-        this.valuesSelected = [];
-        var $onlyOptions = $(this.dropdownOptions).find('li:not(.optgroup)');
-        this.$el.find('option').each(function (el, i) {
-          var option = $onlyOptions.eq(i);
-
-          if ($(el).prop('selected')) {
-            option.find('input[type="checkbox"]').prop("checked", true);
-            _this45._activateOption($(_this45.dropdownOptions), option);
-            _this45.valuesSelected.push(i);
+        for (var key in this._valueDict) {
+          var option = this._valueDict[key];
+          if ($(option.el).prop('selected')) {
+            $(option.optionEl).find('input[type="checkbox"]').prop("checked", true);
+            this._activateOption($(this.dropdownOptions), $(option.optionEl));
+            this._keysSelected[key] = true;
           } else {
-            option.find('input[type="checkbox"]').prop("checked", false);
-            option.removeClass('selected');
+            $(option.optionEl).find('input[type="checkbox"]').prop("checked", false);
+            $(option.optionEl).removeClass('selected');
           }
-        });
+        }
       }
 
       /**
@@ -11535,6 +11589,21 @@ if (Vel) {
           var option = $(newOption);
           option.addClass('selected');
         }
+      }
+
+      /**
+       * Get Selected Values
+       * @return {Array}  Array of selected values
+       */
+
+    }, {
+      key: "getSelectedValues",
+      value: function getSelectedValues() {
+        var selectedValues = [];
+        for (var key in this._keysSelected) {
+          selectedValues.push(this._valueDict[key].el.value);
+        }
+        return selectedValues;
       }
     }], [{
       key: "init",
@@ -11873,5 +11942,5 @@ if (Vel) {
     M.initializeJqueryWrapper(Range, 'range', 'M_Range');
   }
 
-  Range.init($('input[type=range'));
+  Range.init($('input[type=range]'));
 })(cash, M.Vel);
